@@ -125,3 +125,15 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
+
+
+# 邮件配置
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.163.com'     # 根据实际情况进行修改
+EMAIL_PORT = 25
+EMAIL_HOST_USER = 'xxxxx@xxx.com'        # 根据实际情况进行修改
+EMAIL_HOST_PASSWORD = 'xxxxxxxx'         # 根据实际情况进行修改
+
+# 注册有效期天数
+CONFIRM_DAYS = 1
+

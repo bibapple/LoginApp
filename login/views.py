@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect
 from . import models, forms
-from utils.utils import hash_code
+from utils.utils import hash_code, make_confirm_email
+from LoginApp import settings
+from send_email import send_email
+import datetime
 
 
 def index(request):
@@ -12,6 +15,7 @@ def index(request):
 def login(request):
     if request.session.get("is_login", None):  # 不允许重复登录
         return redirect("/index/")
+
     if request.method == "POST":
         login_form = forms.UserForm(request.POST)
         message = "用户名或密码不能为空！"
@@ -24,6 +28,10 @@ def login(request):
                 user = models.User.objects.get(name=username)
             except:
                 message = "用户不存在！"
+                return render(request, "login/login.html", locals())
+            # 首先，检查用户是否通过邮件确认
+            if not user.has_confirmed:
+                message = "该用户还未经过邮件确认！"
                 return render(request, "login/login.html", locals())
 
             if user.password == hash_code(password):
@@ -66,9 +74,12 @@ def register(request):
                 if same_email_user:
                     message = "该邮箱已被注册！"
                     return render(request, "login/register.html", locals())
-                models.User.objects.create(name=username, password=hash_code(password_first),
-                                           email=email, sex=sex)
-                return redirect("/login/")
+                new_user = models.User.objects.create(name=username, password=hash_code(password_first),
+                                                      email=email, sex=sex)
+                code = make_confirm_email(new_user)
+                send_email(email, code)
+                message = "请前往邮箱进行确认！"
+                return render(request, "login/confirm.html", locals())
         else:
             return render(request, "login/register.html", locals())
     register_form = forms.RegisterForm()
@@ -84,6 +95,28 @@ def logout(request):
     # del request.session['user_id']
     # del request.session['user_name']
     return redirect("/login/")
+
+
+def user_confirm(request):
+    code = request.GET.get("code", None)
+    message = ""
+    try:
+        confirm = models.ConfirmEmail.objects.get(code=code)
+    except:
+        message = "无效的确认请求！"
+        return render(request, "login/confirm.html", locals())
+    c_time = confirm.c_time
+    now = datetime.datetime.now()
+    if now > c_time + datetime.timedelta(settings.CONFIRM_DAYS):
+        confirm.user.delete()
+        message = "您的邮件已经过期，请重新注册！"
+        return render(request, "login/confirm.html", locals())
+    else:
+        confirm.user.has_confirmed = True
+        confirm.user.save()
+        confirm.delete()
+        message = "感谢确认，请使用账号登录！"
+        return render(request, "login/confirm.html", locals())
 
 
 
