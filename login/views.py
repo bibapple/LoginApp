@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from . import models, forms
 from utils.utils import hash_code, make_confirm_email
-from LoginApp import settings
+from django.conf import settings
 from send_email import send_email
 import datetime
 
